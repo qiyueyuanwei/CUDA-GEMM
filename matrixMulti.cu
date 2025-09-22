@@ -1,3 +1,6 @@
+/*
+ * 利用cudaEvent进行GPU计时
+ */
 #define CUDA_CHECK(call) \
     do { \
         cudaError_t err = call; \
@@ -26,9 +29,9 @@ __global__ void matMulKernel(float *A, float *B, float *C, int M, int N, int K) 
 }
 
 int main() {
-    int M = 512; // A的行数
-    int K = 256; // A的列数，B的行数
-    int N = 384; // B的列数
+    int M = 5120; // A的行数
+    int K = 2560; // A的列数，B的行数
+    int N = 3840; // B的列数
 
     int sizeA = M * K * sizeof(float);
     int sizeB = K * N * sizeof(float);
@@ -54,9 +57,29 @@ int main() {
     dim3 blocksPerGrid((N + threadsPerBlock.x - 1) / threadsPerBlock.x,
                        (M + threadsPerBlock.y - 1) / threadsPerBlock.y);
 
+
+     // 创建事件
+    cudaEvent_t start, stop;
+    CUDA_CHECK(cudaEventCreate(&start));
+    CUDA_CHECK(cudaEventCreate(&stop));
+
+    // 记录开始事件
+    CUDA_CHECK(cudaEventRecord(start, 0));
+
     matMulKernel<<<blocksPerGrid, threadsPerBlock>>>(d_A, d_B, d_C, M, N, K);
     CUDA_CHECK(cudaGetLastError());
     CUDA_CHECK(cudaDeviceSynchronize());
+    // 记录结束事件
+    CUDA_CHECK(cudaEventRecord(stop, 0));
+    CUDA_CHECK(cudaEventSynchronize(stop));
+
+    float elapsedTime = 0.0f;
+    CUDA_CHECK(cudaEventElapsedTime(&elapsedTime, start, stop));
+    printf("GPU kernel time: %f ms\n", elapsedTime);
+
+    // 销毁事件
+    CUDA_CHECK(cudaEventDestroy(start));
+    CUDA_CHECK(cudaEventDestroy(stop));
 
     CUDA_CHECK(cudaMemcpy(h_C, d_C, sizeC, cudaMemcpyDeviceToHost));
 
