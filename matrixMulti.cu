@@ -5,6 +5,9 @@
             fprintf(stderr, "CUDA error at %s:%d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
             exit(EXIT_FAILURE); \
         } \
+        else { \
+            printf("CUDA call at %s:%d succeeded.\n", __FILE__, __LINE__); \
+        } \
     } while (0)
 #include <stdio.h>
 #include <cuda_runtime.h>
